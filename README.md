@@ -14,14 +14,15 @@ review it in ~15–30 min, render, approve.
 
 ## Requirements
 
-- **Node.js 18.17+** (you have v20; note: sharp is pinned to 0.33.x for Node <20.10)
+- **Node.js 18.17+** (note: sharp is pinned to 0.33.x for Node <20.10)
 - **FFmpeg** on your PATH (`ffmpeg -version`). Install via `brew install ffmpeg`.
+- **cloudflared** (optional — only for real Instagram publishing): `brew install cloudflare/cloudflare/cloudflared`
 
 ## Setup
 
 ```bash
 npm install
-cp .env.example .env      # optional — V1 needs nothing in it
+cp .env.example .env      # fill in any optional integrations (see .env.example)
 npm run dev
 ```
 
@@ -79,6 +80,9 @@ relevant hashtag set. Not spammy, not keyword-stuffed.
   `relatable` (hook → punchline reveal), `product` (overlays → branded end frame).
 - `frame.js` renders each scene as an **SVG → PNG** via `sharp` — real typography,
   exact AUREN colors, centered layout, no headless browser.
+- `emoji.js` sanitizes text baked into video frames — librsvg (used by sharp)
+  can't render color emoji, so a curated map substitutes AUREN-appropriate symbols
+  (e.g. ✨ → ☽). Caption text sent to Instagram is untouched.
 - FFmpeg turns each frame into a clip (fade in/out + subtle zoom) and concatenates
   them into a **1080×1920, 30fps, H.264 MP4** with `+faststart`.
 - Output lands in `content/rendered/` with predictable names like
@@ -91,6 +95,13 @@ relevant hashtag set. Not spammy, not keyword-stuffed.
   `*.corrupt-<ts>` and started fresh. Writes are atomic (temp + rename).
 - Swap in SQLite/Postgres later by implementing the same `Storage` interface.
 
+### Music (`src/music/`)
+- `jamendo.js` — search and download royalty-free / Creative Commons tracks from
+  **Jamendo** (free API). Returns track metadata including license info so you
+  know when attribution is required.
+- Requires `JAMENDO_CLIENT_ID` in `.env` (free — register at
+  developer.jamendo.com). Music is optional; the app renders fine without it.
+
 ### Approval & scheduling (`src/schedule/`)
 - Manual approval is required — nothing auto-publishes. Only `RENDERED` items can
   be approved; only `APPROVED` items can be scheduled.
@@ -98,12 +109,28 @@ relevant hashtag set. Not spammy, not keyword-stuffed.
   No real posting happens.
 
 ### Instagram publishing (`src/publish/`)
-- `InstagramPublisher` interface with `publishReel()`. V1 ships
-  `MockInstagramPublisher` — simulates `UPLOAD → PROCESSING → PUBLISHED` and
-  returns a clearly-fake permalink. **Nothing leaves your machine.**
-- A big `TODO` block in `MockInstagramPublisher.js` documents exactly how the real
-  Meta Instagram Graph API integration will slot in (V3), reading secrets from env
-  only. **No passwords, no cookies, ever.**
+- `InstagramPublisher` interface with `publishReel()`. Ships two impls:
+  - `MockInstagramPublisher` — simulates `UPLOAD → PROCESSING → PUBLISHED` with a
+    clearly-fake permalink. **Nothing leaves your machine.** Default.
+  - `RealInstagramPublisher` — posts for real via the **Instagram API with
+    Instagram Login** (`graph.instagram.com`). Requires `IG_ACCESS_TOKEN` (an
+    `IGAA…` token from Meta's app dashboard) and a public `https://` video URL.
+    Flow: create media container → poll until `FINISHED` → publish.
+- **No passwords, no cookies, ever.** Secrets come from `.env` only.
+
+### Cloud upload (`src/publish/r2.js`)
+Uploads the rendered MP4 to a **Cloudflare R2** bucket and returns a public
+`https://` URL that Instagram can fetch. Uses R2's S3-compatible API with a
+hand-rolled AWS SigV4 signature — zero extra dependencies. Configure via
+`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`,
+`R2_PUBLIC_BASE_URL` in `.env`. Only needed for real publishing (V3+).
+
+### Public tunnel (`src/publish/tunnel.js`)
+Spins up an ephemeral public URL via **`cloudflared` quick tunnel** (free, no
+account) so Instagram can reach the local server to pull the video file. Starts
+only while publishing; killed immediately after. Requires `cloudflared` on your
+PATH (`brew install cloudflare/cloudflare/cloudflared`). Override the binary path
+with `CLOUDFLARED_PATH` in `.env`.
 
 ---
 
@@ -121,18 +148,27 @@ AUREN's typeface; otherwise a clean serif/sans stack is used.
 
 ---
 
+## Optional integrations (all off by default)
+
+| Feature | Env vars needed | What it does |
+|---------|----------------|--------------|
+| Real Instagram posting | `IG_ACCESS_TOKEN` | Posts reels for real via Instagram Login API |
+| Cloudflare R2 upload | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_BASE_URL` | Hosts the MP4 at a public URL Instagram can fetch |
+| Cloudflare tunnel | `cloudflared` on PATH | Ephemeral public URL for local server (needed for real posting) |
+| Jamendo music | `JAMENDO_CLIENT_ID` | Search royalty-free tracks to bake into reels |
+| Custom font | `AUREN_FONT=/path/to/font.ttf` | Use AUREN's typeface in rendered frames |
+
+Everything else runs with no `.env` values at all.
+
+---
+
 ## What is intentionally NOT built (yet)
 
 - No AI content generation (V2). The interface is ready; the impl is not.
-- No real Instagram publishing (V3). Mock only.
 - No analytics / performance learning (V4).
-- No database, auth, cloud, Docker, tracking, cookies.
+- No database, auth, Docker, tracking, cookies.
 
 ## Next steps for V2+
-See the roadmap section in this repo's issues / the TODO in
-`MockInstagramPublisher.js`. Short version:
 - **V2:** add `AIContentGenerator implements ContentGenerator` behind the existing
   interface (optional, paid — clearly isolated).
-- **V3:** add `RealInstagramPublisher implements InstagramPublisher` using Meta's
-  Graph API, secrets via `.env`.
 - **V4:** performance tracking → auto-tune the distribution.
