@@ -1,0 +1,19 @@
+{
+  "name": "auren-content-studio",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Private local tool to generate, render, and (eventually) publish Instagram Reels for @aurentarot.",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js",
+    "render": "node scripts/render-cli.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "sharp": "^0.33.5"
+  },
+  "engines": {
+    "node": ">=18.17"
+  }
+}

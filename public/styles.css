@@ -1,0 +1,137 @@
+/* Chrome colors mirror the live AUREN site's Midnight theme (style.css). */
+:root {
+  --bg: #0B0A0F;       /* --bg */
+  --bg-alt: #211827;   /* --bg-2 */
+  --panel: #181222;    /* --card-bg */
+  --line: #2E1E2C;     /* --border */
+  --text: #EEE8DA;     /* --text */
+  --muted: #7186A8;    /* --text-2 */
+  --gold: #C7A76C;     /* --gold */
+  --gold-dim: #8A6E3E; /* --gold-dim */
+  --wine: #4A1F32;     /* --bg-accent */
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  background: linear-gradient(180deg, var(--bg), var(--bg-alt));
+  color: var(--text);
+  min-height: 100vh;
+}
+header {
+  padding: 28px 32px 16px;
+  border-bottom: 1px solid var(--line);
+}
+h1 {
+  font-family: Georgia, serif;
+  letter-spacing: 6px;
+  font-weight: 600;
+  margin: 0;
+  font-size: 26px;
+  color: var(--gold);
+}
+.tag { color: var(--muted); font-size: 12px; letter-spacing: 3px; margin-top: 4px; }
+main { padding: 24px 32px 80px; max-width: 1100px; margin: 0 auto; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 18px 0; }
+.h2 { font-family: Georgia, serif; font-size: 18px; color: var(--text); letter-spacing: 1px; }
+button {
+  font: inherit; cursor: pointer; border-radius: 8px; padding: 10px 16px;
+  border: 1px solid var(--line); background: var(--panel); color: var(--text);
+  transition: .15s;
+}
+button:hover { border-color: var(--gold); }
+button.primary { background: var(--gold); color: #1a1410; border-color: var(--gold); font-weight: 600; }
+button.ghost { background: transparent; }
+button.danger { border-color: var(--wine); color: #d98aa2; }
+button:disabled { opacity: .4; cursor: not-allowed; }
+
+.week { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.day { border: 1px solid var(--line); border-radius: 10px; background: rgba(23,19,29,.6); }
+.day > .day-h { padding: 8px 14px; color: var(--muted); font-size: 12px; letter-spacing: 2px; border-bottom: 1px solid var(--line); }
+.day-body { padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+.empty { color: #55506080; font-size: 13px; padding: 6px 8px; }
+
+.card { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: var(--panel); display: flex; gap: 12px; align-items: flex-start; }
+.card .concept { flex: 1; }
+.card .concept .hook { font-family: Georgia, serif; font-size: 15px; white-space: pre-line; }
+.card .meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.pill { font-size: 11px; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.status { font-weight: 600; letter-spacing: 1px; }
+.status.IDEA, .status.GENERATED { color: var(--muted); }
+.status.RENDERED { color: var(--gold); }
+.status.APPROVED { color: #7fc99a; }
+.status.SCHEDULED { color: #9db4dd; }
+.status.PUBLISHED { color: #d98aa2; }
+.card-actions { display: flex; flex-direction: column; gap: 6px; }
+.card-actions button { padding: 6px 10px; font-size: 12px; }
+
+/* Editor overlay */
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none; align-items: flex-start; justify-content: center; overflow: auto; padding: 40px 16px; }
+.overlay.open { display: flex; }
+body.modal-open { overflow: hidden; }
+.editor { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; width: min(920px, 100%); padding: 22px 24px; }
+.editor h3 { font-family: Georgia, serif; margin: 0; color: var(--gold); letter-spacing: 1px; }
+.editor-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.close-x { font-size: 18px; line-height: 1; padding: 6px 12px; }
+.grid { display: grid; grid-template-columns: 1fr 360px; gap: 20px; }
+.section-styles { display: flex; flex-direction: column; gap: 6px; }
+.section-row { display: grid; grid-template-columns: 64px 1fr 1fr 84px 100px; gap: 8px; align-items: center; }
+.section-row .name { font-size: 12px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+.section-row select { padding: 6px 8px; font-size: 13px; }
+label { display: block; font-size: 12px; color: var(--muted); letter-spacing: 1px; margin: 12px 0 4px; }
+input, textarea, select {
+  width: 100%; font: inherit; background: #0f0c14; color: var(--text);
+  border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px;
+}
+textarea { resize: vertical; min-height: 70px; white-space: pre-wrap; }
+.editor-actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+.preview-box { border: 1px solid var(--line); border-radius: 10px; padding: 12px; background:#0f0c14; }
+.preview-box video { width: 100%; border-radius: 8px; background:#000; aspect-ratio: 9/16; }
+.preview-box .novid { aspect-ratio: 9/16; display:flex; align-items:center; justify-content:center; color:#555; font-size:13px; border:1px dashed var(--line); border-radius:8px; text-align:center; padding:12px; }
+.caption-prev { white-space: pre-wrap; font-size: 13px; color: #cfc7b5; margin-top: 10px; }
+.hint { font-size: 12px; color: var(--muted); }
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--gold); color:#1a1410; padding: 10px 18px; border-radius: 8px; font-weight:600; opacity:0; transition:.25s; pointer-events:none; max-width: 90vw; text-align: center; }
+.toast.show { opacity: 1; }
+
+/* ---------------- Mobile / phone ---------------- */
+@media (max-width: 640px) {
+  header { padding: 18px 16px 12px; }
+  h1 { font-size: 19px; letter-spacing: 3px; }
+  .tag { font-size: 10px; letter-spacing: 2px; }
+  main { padding: 16px 14px 60px; }
+
+  /* Top toolbar: stack "This Week" over the generate controls, full width */
+  .row { flex-direction: column; align-items: stretch; gap: 10px; }
+  .row > div { display: flex; flex-wrap: wrap; gap: 8px; }
+  #gen-pillar { flex: 1 1 100%; min-width: 0 !important; }
+  #gen-count { flex: 0 0 70px; }
+  #btn-generate { flex: 1 1 auto; }
+
+  /* Editor becomes a full-screen opaque sheet (no page bleed-through) */
+  .overlay { padding: 0; align-items: stretch; justify-content: stretch;
+    background: var(--bg); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .editor { width: 100%; min-height: 100%; padding: 16px 14px 32px;
+    border: none; border-radius: 0; background: var(--panel); }
+  .grid { grid-template-columns: 1fr; gap: 14px; }
+
+  /* Sticky editor header so the close button is always reachable */
+  .editor-head { position: sticky; top: 0; z-index: 5; background: var(--panel);
+    padding: 6px 0 10px; margin: 0 0 8px; border-bottom: 1px solid var(--line); }
+
+  /* Section-style rows: wrap the 4 controls under the name label */
+  .section-row { grid-template-columns: 1fr 1fr; grid-template-areas: "name name" "font color" "size weight"; gap: 6px 8px; }
+  .section-row .name { grid-area: name; margin-top: 6px; }
+  .section-row [data-kind="font"] { grid-area: font; }
+  .section-row [data-kind="color"] { grid-area: color; }
+  .section-row [data-kind="size"] { grid-area: size; }
+  .section-row [data-kind="weight"] { grid-area: weight; }
+
+  /* Editor action buttons: full-width, easy tap targets */
+  .editor-actions { gap: 8px; }
+  .editor-actions button { flex: 1 1 45%; padding: 12px 10px; }
+
+  /* Cards: action buttons below the concept instead of squeezed right */
+  .card { flex-direction: column; }
+  .card-actions { flex-direction: row; flex-wrap: wrap; width: 100%; }
+  .card-actions button { flex: 1 1 auto; }
+}

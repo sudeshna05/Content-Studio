@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Secrets — never commit
+.env
+
+# Local data (your content lives here; back it up yourself if you want)
+data/*.json
+
+# Generated media
+content/ideas/*
+content/drafts/*
+content/approved/*
+content/rendered/*
+content/published/*
+!content/*/.gitkeep
+
+# Assets you drop in manually (logo/fonts) — keep out of git by default
+assets/logo/*
+assets/fonts/*
+assets/product/*
+!assets/**/.gitkeep
+
+# OS
+.DS_Store
