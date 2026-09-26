@@ -201,11 +201,41 @@ async function openEditor(id) {
   opt($('#f-font'), (META.fonts || []).map((f) => f.key), item.font || 'serif', (META.fonts || []).map((f) => f.label));
   $('#f-bio-text').value = item.bioFooterText || 'link in bio';
   $('#f-bio-show').checked = item.showBioFooter !== false;
+  opt($('#f-motion'), META.motions || ['subtle', 'still'], item.motion || 'subtle',
+      (META.motions || ['subtle', 'still']).map((m) => m === 'subtle' ? 'Subtle (fade + slow zoom)' : 'Still (no movement)'));
   buildSectionStyles(item.styleOverrides || {});
+
+  // Music: always show the block; if not configured, show a note + disable input.
+  SELECTED_TRACK = item.audio || null;
+  $('#music-block').style.display = '';
+  $('#music-results').innerHTML = '';
+  $('#music-q').value = '';
+  const enabled = META.musicEnabled;
+  $('#music-q').disabled = !enabled;
+  $('#music-search').disabled = !enabled;
+  if (!enabled) {
+    $('#music-results').innerHTML =
+      '<div class="hint">Music search is off. Add a free JAMENDO_CLIENT_ID to .env to enable it (see INSTAGRAM_SETUP / .env.example).</div>';
+  }
+  renderSelectedTrack();
 
   renderPreview(item);
   $('#e-hint').textContent = hintFor(item);
   setOverlay(true);
+  bindLivePreviewInputs();
+  updateLivePreview(); // render immediately on open
+}
+
+// Attach change/input listeners to every editor control so edits trigger a
+// debounced live still-frame preview. Idempotent (guards with a flag).
+let livePreviewBound = false;
+function bindLivePreviewInputs() {
+  const editor = document.querySelector('.editor');
+  if (!editor || livePreviewBound) return;
+  livePreviewBound = true;
+  const skip = (e) => e.target.closest('.editor-actions') || e.target.closest('#music-block');
+  editor.addEventListener('input', (e) => { if (!skip(e)) scheduleLivePreview(); });
+  editor.addEventListener('change', (e) => { if (!skip(e)) scheduleLivePreview(); });
 }
 
 function setOverlay(open) {
@@ -234,11 +264,113 @@ function hintFor(item) {
 function renderPreview(item) {
   const v = $('#prev-video');
   if (item.videoFile) {
-    v.innerHTML = `<video controls src="/media/${item.videoFile}"></video>`;
+    // Strong cache-bust + explicit reload so a re-render (same filename) always
+    // shows the newest MP4, never the browser's decoded old copy.
+    const bust = `${Date.now()}-${Math.round(performance.now())}`;
+    v.innerHTML = `<video controls playsinline preload="metadata"></video>`;
+    const vid = v.querySelector('video');
+    vid.src = `/media/${item.videoFile}?v=${bust}`;
+    vid.load();
+    v.style.display = '';
   } else {
-    v.innerHTML = '<div class="novid">no video yet<br/>click Render Reel</div>';
+    v.innerHTML = '';
+    v.style.display = 'none';
   }
-  $('#prev-caption').textContent = item.caption || '';
+  $('#prev-caption').textContent = buildCaptionText(item);
+}
+
+// Rough client-side caption preview (server owns the real one on save).
+function buildCaptionText(item) {
+  return item.caption || '';
+}
+
+// ---- Live still-frame preview (debounced) ----
+let previewTimer = null;
+let previewSeq = 0;
+function scheduleLivePreview() {
+  const img = $('#prev-live');
+  if (img) img.classList.add('stale');
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(updateLivePreview, 250);
+}
+async function updateLivePreview() {
+  if (!CURRENT) return;
+  const body = collect();
+  const seq = ++previewSeq;
+  $('#prev-status').textContent = 'updating…';
+  try {
+    const r = await fetch('/api/preview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) throw new Error('preview failed');
+    const blob = await r.blob();
+    if (seq !== previewSeq) return; // a newer edit superseded this one
+    const img = $('#prev-live');
+    const url = URL.createObjectURL(blob);
+    img.onload = () => { img.classList.remove('stale'); URL.revokeObjectURL(url); };
+    img.src = url;
+    $('#prev-status').textContent = '';
+    $('#prev-caption').textContent = body.caption || '';
+  } catch (e) {
+    if (seq === previewSeq) $('#prev-status').textContent = '(preview error)';
+  }
+}
+
+// ---- Music search / selection ----
+let SELECTED_TRACK = null;
+
+function fmtDur(s) {
+  s = Math.round(s || 0);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+async function musicSearch() {
+  const q = $('#music-q').value.trim();
+  const box = $('#music-results');
+  box.innerHTML = '<div class="hint">searching…</div>';
+  try {
+    const r = await api(`/api/music/search?q=${encodeURIComponent(q)}`);
+    if (!r.tracks.length) { box.innerHTML = '<div class="hint">no tracks found</div>'; return; }
+    box.innerHTML = '';
+    r.tracks.forEach((t) => {
+      const el = document.createElement('div');
+      el.className = 'music-item';
+      el.innerHTML = `
+        <div class="mi-main">
+          <div class="mi-name">${escapeHtml(t.name)}</div>
+          <div class="mi-sub">${escapeHtml(t.artist)} · ${fmtDur(t.duration)}</div>
+        </div>
+        <audio controls preload="none" src="${t.audio}"></audio>
+        <button type="button">Use</button>`;
+      el.querySelector('button').onclick = () => {
+        SELECTED_TRACK = { id: t.id, name: t.name, artist: t.artist, audio: t.audio,
+          license: t.license, shareUrl: t.shareUrl, duration: t.duration, startSec: 0 };
+        renderSelectedTrack();
+        scheduleLivePreview();
+      };
+      box.appendChild(el);
+    });
+  } catch (e) { box.innerHTML = `<div class="hint">${escapeHtml(e.message)}</div>`; }
+}
+
+function renderSelectedTrack() {
+  const wrap = $('#music-selected');
+  if (!SELECTED_TRACK) { wrap.innerHTML = ''; $('#music-hint').textContent = ''; return; }
+  const t = SELECTED_TRACK;
+  wrap.innerHTML = `
+    ♪ ${escapeHtml(t.name)} — ${escapeHtml(t.artist)}
+    <button type="button" id="music-clear" class="ghost" style="padding:2px 8px;font-size:12px;margin-left:8px;">remove</button>
+    <div class="start-row">
+      start at <input id="music-start" type="number" min="0" step="1" value="${Math.round(t.startSec || 0)}" /> sec
+      <span>(track is ${fmtDur(t.duration)})</span>
+    </div>`;
+  $('#music-clear').onclick = () => { SELECTED_TRACK = null; renderSelectedTrack(); };
+  $('#music-start').onchange = (e) => { SELECTED_TRACK.startSec = Number(e.target.value) || 0; };
+  $('#music-hint').textContent = t.license
+    ? 'Creative Commons — attribution may be required; check the license before wide use.'
+    : 'Royalty-free track, baked into the video.';
 }
 
 function collect() {
@@ -256,8 +388,63 @@ function collect() {
     showBioFooter: $('#f-bio-show').checked,
     bioFooterText: $('#f-bio-text').value || 'link in bio',
     styleOverrides: collectSectionStyles(),
+    motion: $('#f-motion').value || 'subtle',
+    audio: SELECTED_TRACK,
     scheduledDate: $('#f-date').value || null,
     scheduledTime: $('#f-time').value || null,
+  };
+}
+
+// Send-to-phone: save + ensure rendered, copy caption, show a QR to the video
+// on the LAN so you scan it, save to Photos, and post in the IG app with any song.
+async function sendToPhone() {
+  await saveEditor();
+  if (!CURRENT.videoFile) {
+    toast('Rendering first…');
+    const r = await api(`/api/content/${CURRENT.id}/render`, { method: 'POST' });
+    CURRENT = r;
+  }
+  const base = META.lanBaseUrl;
+  const panel = $('#phone-panel');
+  if (!base) {
+    panel.style.display = '';
+    panel.innerHTML = '<h4>Send to Phone</h4><div class="hint">Could not detect your Mac’s Wi-Fi address. Make sure you’re on Wi-Fi and reload.</div>';
+    return;
+  }
+  const videoUrl = `${base}/media/${CURRENT.videoFile}`;
+
+  async function copyCaption() {
+    try { await navigator.clipboard.writeText(CURRENT.caption || ''); return true; }
+    catch { return false; }
+  }
+  const copied = await copyCaption();
+
+  const qr = qrcode(0, 'M');
+  qr.addData(videoUrl);
+  qr.make();
+  const qrImg = qr.createImgTag(6, 10); // bigger, easier to scan
+
+  panel.style.display = '';
+  panel.innerHTML = `
+    <h4>Send to Phone → post with ANY song</h4>
+    <div class="qr">${qrImg}</div>
+    <label style="margin-top:4px;">Song you want to add (reminder for yourself)</label>
+    <input id="phone-song" placeholder="e.g. Daddy Issues — The Neighbourhood" />
+    <ol>
+      <li>Scan the QR with your <b>iPhone camera</b> → video opens → <b>save to Photos</b>.</li>
+      <li><b>Instagram → new Reel</b> → pick the saved video.</li>
+      <li>Tap the <b>music</b> icon → search &amp; add your song.</li>
+      <li><b>Paste the caption</b> ${copied ? '(copied ✓)' : ''} → share.</li>
+    </ol>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <button type="button" id="phone-recopy" style="padding:6px 12px;font-size:12px;">Copy caption again</button>
+      <span id="phone-copystate" class="cap-copied">${copied ? 'Caption + hashtags copied to clipboard.' : ''}</span>
+    </div>
+    <div class="hint" style="margin-top:8px;word-break:break-all;">Can’t scan? Open on your phone: ${videoUrl}</div>`;
+
+  $('#phone-recopy').onclick = async () => {
+    const ok = await copyCaption();
+    $('#phone-copystate').textContent = ok ? 'Caption copied ✓' : 'Copy blocked — select the Caption box above and copy manually.';
   };
 }
 
@@ -273,8 +460,11 @@ async function saveEditor() {
 function bindEditor() {
   $('#e-close').onclick = () => setOverlay(false);
   $('#e-close-top').onclick = () => setOverlay(false);
+  $('#music-search').onclick = () => musicSearch();
+  $('#music-q').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); musicSearch(); } });
   $('#e-save').onclick = () => saveEditor().catch((e) => toast(e.message));
   $('#e-render').onclick = async () => { await saveEditor(); await renderItem(CURRENT.id); };
+  $('#e-tophone').onclick = () => sendToPhone().catch((e) => toast(e.message));
   $('#e-approve').onclick = () => approveItem(CURRENT.id);
   $('#e-schedule').onclick = async () => {
     try {

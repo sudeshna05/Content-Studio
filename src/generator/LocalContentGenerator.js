@@ -47,10 +47,13 @@ function apportion(distribution, total) {
 }
 
 export class LocalContentGenerator extends ContentGenerator {
-  async generate({ count = 7, distribution, settings, startDate = new Date(), pillar = null } = {}) {
+  async generate({ count = 7, distribution, settings, startDate = new Date(), pillar = null, usedConceptIds = [] } = {}) {
     // If a single pillar is requested, put the whole batch into it.
     const dist = pillar && PILLARS[pillar] ? { [pillar]: 1 } : distribution;
     const counts = apportion(dist, count);
+    // Concepts already in the queue — skip these so clicks give fresh content.
+    // If a pillar is fully exhausted, we allow reuse (better than nothing).
+    const used = new Set(usedConceptIds);
     const dates = suggestDates(startDate, count, settings);
 
     const items = [];
@@ -59,7 +62,12 @@ export class LocalContentGenerator extends ContentGenerator {
     for (const [pillarKey, n] of Object.entries(counts)) {
       const pillar = PILLARS[pillarKey];
       if (!pillar) continue;
-      const picks = pickDistinct(pillar.concepts, n, offset);
+      // Prefer concepts not already used; only fall back to used ones if the
+      // pillar's fresh pool can't fill the request.
+      const fresh = pillar.concepts.filter((c) => !used.has(c.id));
+      const source = fresh.length >= n ? fresh : pillar.concepts;
+      const picks = pickDistinct(source, n, offset);
+      picks.forEach((c) => used.add(c.id)); // don't repeat within this batch either
       offset += 5;
 
       for (const concept of picks) {

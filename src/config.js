@@ -88,7 +88,9 @@ export const DEFAULT_SETTINGS = {
     // Default font key for new reels ('serif' | 'sans' | 'mono' | 'custom:<file>').
     font: 'serif',
     // Default text for the pinned bottom "link in bio" band.
-    bioFooterText: 'link in bio',
+    // (On-screen, 🔮 renders as a crescent ☾ since librsvg can't draw color
+    //  emoji; captions keep the real 🔮.)
+    bioFooterText: 'link in bio 🔮',
   },
   // Content distribution. Must be keys of the pillar library. Sums are normalized.
   distribution: {

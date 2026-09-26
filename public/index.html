@@ -89,8 +89,26 @@
           </div>
           <div class="hint">Duration applies to every template (scaled across scenes). Reels render silent — add trending audio in the Instagram app when posting. Add your own fonts by dropping .ttf/.otf into <code>assets/fonts/</code>.</div>
 
+          <div style="display:flex;gap:12px;">
+            <div style="flex:1;">
+              <label>Motion</label>
+              <select id="f-motion"></select>
+            </div>
+          </div>
+
           <label style="margin-top:16px;">Per-section style (leave on default to inherit)</label>
           <div id="section-styles" class="section-styles"></div>
+
+          <div id="music-block" style="margin-top:16px;">
+            <label>Music (royalty-free · baked into the video)</label>
+            <div style="display:flex;gap:8px;">
+              <input id="music-q" placeholder="search a mood or genre, e.g. ambient, cinematic, calm" />
+              <button id="music-search" type="button" style="white-space:nowrap;">Search</button>
+            </div>
+            <div id="music-results" class="music-results"></div>
+            <div id="music-selected" class="music-selected"></div>
+            <div class="hint" id="music-hint"></div>
+          </div>
 
           <div style="display:flex;gap:12px;">
             <div style="flex:1;">
@@ -108,16 +126,19 @@
             <button id="e-render">Render Reel</button>
             <button id="e-approve">Approve</button>
             <button id="e-schedule">Schedule</button>
+            <button id="e-tophone" class="primary">Send to Phone</button>
             <button id="e-publish" class="ghost">Post Now</button>
             <button id="e-delete" class="danger">Delete</button>
             <button id="e-close" class="ghost">Close</button>
           </div>
           <div id="e-hint" class="hint" style="margin-top:10px;"></div>
+          <div id="phone-panel" class="phone-panel" style="display:none;"></div>
         </div>
 
-        <div>
-          <label>Preview</label>
+        <div class="preview-col">
+          <label>Live preview <span id="prev-status" class="hint" style="text-transform:none;letter-spacing:0;"></span></label>
           <div class="preview-box">
+            <img id="prev-live" class="prev-live" alt="live preview" />
             <div id="prev-video"></div>
             <div class="caption-prev" id="prev-caption"></div>
           </div>
@@ -128,6 +149,7 @@
 
   <div id="toast" class="toast"></div>
 
+  <script src="/qrcode.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>

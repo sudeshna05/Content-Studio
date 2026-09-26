@@ -28,10 +28,21 @@ export function listCustomFonts() {
     return fs
       .readdirSync(FONT_DIR)
       .filter((f) => ['.ttf', '.otf', '.woff', '.woff2'].includes(ext(f)))
-      .map((f) => ({ key: `custom:${f}`, label: f.replace(/\.[^.]+$/, ''), file: f }));
+      // NotoEmoji is an emoji glyph font used internally, not a text choice.
+      .filter((f) => !/notoemoji/i.test(f))
+      .map((f) => ({ key: `custom:${f}`, label: prettyLabel(f), file: f }));
   } catch {
     return [];
   }
+}
+
+// Turn "CormorantGaramond.ttf" -> "Cormorant Garamond".
+function prettyLabel(file) {
+  return file
+    .replace(/\.[^.]+$/, '')
+    .replace(/[-_]/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .trim();
 }
 
 /** Everything the UI can offer. */

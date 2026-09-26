@@ -66,18 +66,45 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .card-actions button { padding: 6px 10px; font-size: 12px; }
 
 /* Editor overlay */
-.overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none; align-items: flex-start; justify-content: center; overflow: auto; padding: 40px 16px; }
-.overlay.open { display: flex; }
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none; overflow: auto; padding: 40px 16px; }
+.overlay.open { display: block; }
+.editor { margin: 0 auto; }
 body.modal-open { overflow: hidden; }
-.editor { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; width: min(920px, 100%); padding: 22px 24px; }
+.editor { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; width: min(1040px, 100%); padding: 22px 24px; }
 .editor h3 { font-family: Georgia, serif; margin: 0; color: var(--gold); letter-spacing: 1px; }
 .editor-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
 .close-x { font-size: 18px; line-height: 1; padding: 6px 12px; }
-.grid { display: grid; grid-template-columns: 1fr 360px; gap: 20px; }
+/* Default (mobile-first): single column, preview on top. */
+.grid { display: flex; flex-direction: column; gap: 14px; }
+.preview-col { order: -1; }
+
+/* Desktop: two columns, form left, preview pinned right. */
+@media (min-width: 900px) {
+  .grid { flex-direction: row; align-items: flex-start; gap: 24px; }
+  .grid > div:first-child { flex: 1 1 auto; min-width: 0; order: 0; }
+  .preview-col { flex: 0 0 280px; order: 1; position: sticky; top: 8px; align-self: flex-start; }
+}
 .section-styles { display: flex; flex-direction: column; gap: 6px; }
 .section-row { display: grid; grid-template-columns: 64px 1fr 1fr 84px 100px; gap: 8px; align-items: center; }
 .section-row .name { font-size: 12px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
 .section-row select { padding: 6px 8px; font-size: 13px; }
+.music-results { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; max-height: 220px; overflow-y: auto; }
+.music-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; background:#0f0c14; }
+.music-item:hover { border-color: var(--gold); }
+.music-item .mi-main { flex: 1; min-width: 0; }
+.music-item .mi-name { font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.music-item .mi-sub { font-size: 11px; color: var(--muted); }
+.music-item audio { height: 28px; }
+.music-item button { padding: 5px 10px; font-size: 12px; }
+.music-selected { margin-top: 8px; font-size: 13px; color: var(--gold); }
+.music-selected .start-row { display:flex; align-items:center; gap:8px; margin-top:6px; color: var(--muted); font-size:12px; }
+.music-selected input { width: 90px; }
+.phone-panel { margin-top: 14px; padding: 16px; border: 1px solid var(--gold); border-radius: 10px; background:#0f0c14; }
+.phone-panel h4 { margin: 0 0 6px; color: var(--gold); font-family: Georgia, serif; font-weight: 600; }
+.phone-panel .qr { background:#fff; padding: 10px; border-radius: 8px; display:inline-block; margin: 10px 0; }
+.phone-panel .qr img, .phone-panel .qr canvas, .phone-panel .qr table { display:block; }
+.phone-panel ol { margin: 8px 0 0; padding-left: 18px; color: var(--text); font-size: 13px; line-height: 1.6; }
+.phone-panel .cap-copied { color: #7fc99a; font-size: 12px; margin-top: 8px; }
 label { display: block; font-size: 12px; color: var(--muted); letter-spacing: 1px; margin: 12px 0 4px; }
 input, textarea, select {
   width: 100%; font: inherit; background: #0f0c14; color: var(--text);
@@ -85,9 +112,13 @@ input, textarea, select {
 }
 textarea { resize: vertical; min-height: 70px; white-space: pre-wrap; }
 .editor-actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
-.preview-box { border: 1px solid var(--line); border-radius: 10px; padding: 12px; background:#0f0c14; }
-.preview-box video { width: 100%; border-radius: 8px; background:#000; aspect-ratio: 9/16; }
-.preview-box .novid { aspect-ratio: 9/16; display:flex; align-items:center; justify-content:center; color:#555; font-size:13px; border:1px dashed var(--line); border-radius:8px; text-align:center; padding:12px; }
+.preview-box { border: 1px solid var(--line); border-radius: 10px; padding: 12px; background:#0f0c14; display: flex; flex-direction: column; align-items: center; }
+/* Cap the preview so it fits the sticky side column. */
+.preview-box video,
+.prev-live { border-radius: 8px; background:#000; aspect-ratio: 9/16; width: 100%; max-width: 240px; display: block; }
+.prev-live { object-fit: cover; background:#0f0c14; transition: opacity .15s; }
+.prev-live.stale { opacity: .55; }
+.preview-box .novid { aspect-ratio: 9/16; max-height: 420px; display:flex; align-items:center; justify-content:center; color:#555; font-size:13px; border:1px dashed var(--line); border-radius:8px; text-align:center; padding:12px; }
 .caption-prev { white-space: pre-wrap; font-size: 13px; color: #cfc7b5; margin-top: 10px; }
 .hint { font-size: 12px; color: var(--muted); }
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--gold); color:#1a1410; padding: 10px 18px; border-radius: 8px; font-weight:600; opacity:0; transition:.25s; pointer-events:none; max-width: 90vw; text-align: center; }
@@ -108,11 +139,18 @@ textarea { resize: vertical; min-height: 70px; white-space: pre-wrap; }
   #btn-generate { flex: 1 1 auto; }
 
   /* Editor becomes a full-screen opaque sheet (no page bleed-through) */
-  .overlay { padding: 0; align-items: stretch; justify-content: stretch;
-    background: var(--bg); overflow-y: auto; -webkit-overflow-scrolling: touch; }
-  .editor { width: 100%; min-height: 100%; padding: 16px 14px 32px;
+  .overlay { padding: 0; background: var(--bg); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .editor { width: 100%; min-height: 100%; margin: 0; padding: 16px 14px 32px;
     border: none; border-radius: 0; background: var(--panel); }
-  .grid { grid-template-columns: 1fr; gap: 14px; }
+  .grid { flex-direction: column; gap: 14px; }
+  .grid > div:first-child { flex: 1 1 auto; }
+  /* On phones: preview goes to the TOP and stays pinned under the header,
+     so you always see changes without scrolling. Form scrolls beneath it. */
+  .preview-col { flex: 0 0 auto; order: -1; position: sticky; top: 52px; z-index: 4;
+    background: var(--panel); padding-bottom: 8px; width: 100%; }
+  .preview-col .preview-box { flex-direction: row; gap: 10px; align-items: flex-start; }
+  .preview-box video, .prev-live { max-width: 120px; }
+  .preview-col .caption-prev { display: none; }
 
   /* Sticky editor header so the close button is always reachable */
   .editor-head { position: sticky; top: 0; z-index: 5; background: var(--panel);

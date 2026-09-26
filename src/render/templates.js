@@ -65,49 +65,39 @@ const TEMPLATES = {
     ];
   },
 
-  // TEMPLATE 2 — RELATABLE: hook then punchline reveal (two scenes).
+  // TEMPLATE 2 — RELATABLE: hook + body + CTA all on ONE screen (hook always
+  // visible now), held for the reel duration with a subtle reveal.
   relatable(item, settings) {
-    return [
-      {
-        lines: splitLines(item.hook).map((t) => ({ text: t, role: 'hook' })),
-        align: 'center',
-        durationSec: 2.5,
-      },
-      {
-        lines: [
-          ...splitLines(item.body).map((t) => ({ text: t, role: 'body' })),
-          { text: '', role: 'body' },
-          ...splitLines(item.cta).map((t) => ({ text: t, role: 'cta' })),
-        ],
-        align: 'center',
-        durationSec: 3.5,
-      },
-    ];
+    return [oneScreen(item)];
   },
 
-  // TEMPLATE 3 — PRODUCT: text overlays leading to a branded end frame.
-  // (V1 renders text scenes; drop a screenshot into assets/product to extend.)
+  // TEMPLATE 3 — PRODUCT: everything on one screen, then a branded end frame.
+  // (Drop a screenshot into assets/product to extend later.)
   product(item, settings) {
     return [
-      {
-        lines: splitLines(item.hook).map((t) => ({ text: t, role: 'hook' })),
-        align: 'center',
-        durationSec: 2,
-      },
-      {
-        lines: splitLines(item.body).map((t) => ({ text: t, role: 'body' })),
-        align: 'center',
-        durationSec: 2.5,
-      },
-      {
-        lines: splitLines(item.cta).map((t) => ({ text: t, role: 'cta' })),
-        align: 'center',
-        durationSec: 2,
-      },
+      { ...oneScreen(item), durationSec: Number(item.durationSec) > 0 ? Math.max(3, Number(item.durationSec) - 2.5) : 7 },
       BRAND_SCENE(settings),
     ];
   },
 };
+
+// Shared "all text on one screen" layout: hook, then body, then CTA — together.
+function oneScreen(item) {
+  const lines = [...splitLines(item.hook).map((t) => ({ text: t, role: 'hook' }))];
+  if (item.body) {
+    lines.push({ text: '', role: 'body' });
+    lines.push(...splitLines(item.body).map((t) => ({ text: t, role: 'body' })));
+  }
+  if (item.cta) {
+    lines.push({ text: '', role: 'body' });
+    lines.push(...splitLines(item.cta).map((t) => ({ text: t, role: 'cta' })));
+  }
+  return {
+    lines,
+    align: 'center',
+    durationSec: Number(item.durationSec) > 0 ? Number(item.durationSec) : 10,
+  };
+}
 
 export function buildScenes(item, settings) {
   const fn = TEMPLATES[item.template] || TEMPLATES.founder;

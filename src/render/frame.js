@@ -8,6 +8,7 @@
 import sharp from 'sharp';
 import { VIDEO, BACKGROUND_MODES, COLOR_SWATCHES } from '../config.js';
 import { resolveFont } from './fonts.js';
+import { sanitizeForRender } from './emoji.js';
 
 const W = VIDEO.width;
 const H = VIDEO.height;
@@ -130,7 +131,7 @@ function buildSvg(scene, colors, opts) {
       const fill = resolveColor(r.ov.color, colors, colors[r.base.colorSlot]);
       const t = `<text x="${W / 2}" y="${y}" text-anchor="middle" font-family="${family}"
         font-size="${r.size}" font-weight="${r.weight}" fill="${fill}"
-        letter-spacing="${r.base.spacing}">${esc(r.line.text)}</text>`;
+        letter-spacing="${r.base.spacing}">${esc(sanitizeForRender(r.line.text))}</text>`;
       y += gaps[i];
       return t;
     })
@@ -147,7 +148,7 @@ function buildSvg(scene, colors, opts) {
     const fy = H - 160; // clear of Instagram's bottom UI overlay zone
     footerSvg = `<text x="${W / 2}" y="${fy}" text-anchor="middle" font-family="${family}"
       font-size="${size}" font-weight="${weight}" fill="${fill}"
-      letter-spacing="3">${esc(footer.text || 'link in bio')}</text>`;
+      letter-spacing="3">${esc(sanitizeForRender(footer.text || 'link in bio'))}</text>`;
   }
 
   const faceCss = reg.allFaceCss();

@@ -73,16 +73,24 @@ export class FFmpegReelRenderer extends ReelRenderer {
         const clip = path.join(work, `clip-${i}.mp4`);
         const dur = Math.max(1, (scene.durationSec || 3) * factor);
         const fps = VIDEO.fps;
-        const fade = 0.4;
-        // zoompan gives a slow subtle scale; fade in/out on top.
         const frames = Math.round(dur * fps);
-        const vf = [
-          `scale=${VIDEO.width * 2}:-1`,
-          `zoompan=z='min(zoom+0.0006,1.05)':d=${frames}:s=${VIDEO.width}x${VIDEO.height}:fps=${fps}`,
-          `fade=t=in:st=0:d=${fade}`,
-          `fade=t=out:st=${Math.max(0, dur - fade)}:d=${fade}`,
-          'format=yuv420p',
-        ].join(',');
+
+        // Motion mode: 'subtle' (fade + slow zoom, default) or 'still' (dead static).
+        const motion = item.motion || 'subtle';
+        let vf;
+        if (motion === 'still') {
+          // Completely static: no zoom, no fade. A video that looks like an image.
+          vf = `scale=${VIDEO.width}:${VIDEO.height},format=yuv420p`;
+        } else {
+          const fade = 0.4;
+          vf = [
+            `scale=${VIDEO.width * 2}:-1`,
+            `zoompan=z='min(zoom+0.0006,1.05)':d=${frames}:s=${VIDEO.width}x${VIDEO.height}:fps=${fps}`,
+            `fade=t=in:st=0:d=${fade}`,
+            `fade=t=out:st=${Math.max(0, dur - fade)}:d=${fade}`,
+            'format=yuv420p',
+          ].join(',');
+        }
 
         await run(this.ffmpeg, [
           '-y',
@@ -98,7 +106,7 @@ export class FFmpegReelRenderer extends ReelRenderer {
         clipPaths.push(clip);
       }
 
-      // Concat via demuxer (all clips share codec/params).
+      // Concat via demuxer (all clips share codec/params) -> silent video.
       const listFile = path.join(work, 'list.txt');
       await fs.writeFile(
         listFile,
@@ -106,16 +114,40 @@ export class FFmpegReelRenderer extends ReelRenderer {
         'utf8'
       );
 
+      const silent = path.join(work, 'silent.mp4');
       await run(this.ffmpeg, [
-        '-y',
-        '-f', 'concat',
-        '-safe', '0',
-        '-i', listFile,
-        '-c:v', 'libx264',
-        '-pix_fmt', 'yuv420p',
-        '-movflags', '+faststart',
-        outPath,
+        '-y', '-f', 'concat', '-safe', '0', '-i', listFile,
+        '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-movflags', '+faststart',
+        silent,
       ]);
+
+      // Total reel length (for trimming audio).
+      const totalDur = scenes.reduce((a, s) => a + (s.durationSec || 3), 0) * factor;
+
+      // If a music track is attached, download it, trim from startSec, fade,
+      // and mux it onto the silent video. Otherwise the silent video is final.
+      const audio = item.audio && item.audioFilePath ? item.audio : null;
+      if (audio && item.audioFilePath && fss.existsSync(item.audioFilePath)) {
+        const start = Math.max(0, Number(audio.startSec) || 0);
+        const afade = 0.5;
+        await run(this.ffmpeg, [
+          '-y',
+          '-i', silent,
+          '-ss', String(start),
+          '-t', String(totalDur),
+          '-i', item.audioFilePath,
+          '-filter:a', `afade=t=in:st=0:d=${afade},afade=t=out:st=${Math.max(0, totalDur - afade)}:d=${afade}`,
+          '-map', '0:v:0', '-map', '1:a:0',
+          '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k',
+          '-shortest', '-movflags', '+faststart',
+          outPath,
+        ]);
+      } else {
+        await fs.rename(silent, outPath).catch(async () => {
+          // rename can fail across temp<->content; fall back to copy
+          await fs.copyFile(silent, outPath);
+        });
+      }
 
       return { videoFile: path.relative(PATHS.content, outPath) };
     } finally {
